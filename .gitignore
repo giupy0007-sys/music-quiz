@@ -1,0 +1,24 @@
+# Dipendenze Node.js — non vanno mai su git, sono enormi
+node_modules/
+
+# Dati di runtime — vengono ricreati automaticamente dal server al primo avvio
+data/profiles.json
+data/leaderboard.json
+data/leaderboard_modes.json
+data/daily.json
+
+# File di log
+*.log
+npm-debug.log*
+
+# File di sistema macOS/Windows
+.DS_Store
+.DS_Store?
+Thumbs.db
+
+# Variabili d'ambiente (se in futuro aggiungi chiavi API)
+.env
+.env.local
+
+# Cartelle temporanee
+tmp/

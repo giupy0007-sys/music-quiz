@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#0a0612" />
+<title>Music Quiz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div id="toast-container" class="toast-container"></div>
+<div id="confetti-container" class="confetti-container"></div>
+<div id="flying-emoji-container" class="flying-emoji-container"></div>
+<div class="bg-glow"></div>
+
+<button id="btn-reaction-toggle" class="reaction-fab hidden" type="button">😄</button>
+<div id="reaction-panel" class="reaction-panel hidden">
+  <button class="reaction-emoji-btn" data-emoji="🔥" type="button">🔥</button>
+  <button class="reaction-emoji-btn" data-emoji="😂" type="button">😂</button>
+  <button class="reaction-emoji-btn" data-emoji="💀" type="button">💀</button>
+  <button class="reaction-emoji-btn" data-emoji="🐐" type="button">🐐</button>
+  <button class="reaction-emoji-btn" data-emoji="😤" type="button">😤</button>
+  <button class="reaction-emoji-btn" data-emoji="🎯" type="button">🎯</button>
+  <button class="reaction-emoji-btn" data-emoji="💩" type="button">💩</button>
+  <button class="reaction-emoji-btn" data-emoji="👍" type="button">👍</button>
+</div>
+
+<div id="app">
+
+  <!-- SCHERMATA HOME -->
+  <section id="screen-home" class="screen active">
+    <div id="floating-covers" class="floating-covers"></div>
+
+    <div class="brand">
+      <div id="brand-mark" class="brand-mark">🎤</div>
+      <h1 class="logo">Music Quiz</h1>
+      <p class="subtitle">Hip Hop &amp; Trap · multiplayer live</p>
+    </div>
+
+    <div class="card card-glass">
+      <label class="field-label" for="nickname-input">Il tuo nickname</label>
+      <input id="nickname-input" maxlength="16" placeholder="Es. Giupy" autocomplete="off" />
+
+      <label class="field-label">Modalità di gioco</label>
+      <div id="mode-grid" class="mode-grid"></div>
+
+      <button id="btn-create" class="btn btn-primary">
+        <span>Crea una stanza</span>
+      </button>
+
+      <div class="divider"><span>oppure</span></div>
+
+      <input id="code-input" maxlength="4" placeholder="CODICE STANZA" autocomplete="off" class="code-field" />
+      <button id="btn-join" class="btn btn-secondary">
+        <span>Entra nella stanza</span>
+      </button>
+
+      <p id="home-error" class="error-text"></p>
+    </div>
+
+    <div class="card daily-card" id="daily-card">
+      <div class="daily-card-top">
+        <h3 class="card-heading">📅 Daily Challenge</h3>
+        <span id="daily-played-badge" class="badge badge-soft hidden">✅ Giocata oggi</span>
+      </div>
+      <p class="hint">Le stesse 10 domande per tutti, ogni giorno. Reset tra <span id="daily-countdown-text">--:--:--</span></p>
+      <button id="btn-daily" class="btn btn-secondary"><span>Gioca la Daily Challenge</span></button>
+    </div>
+
+    <div class="card leaderboard-card">
+      <h3 class="card-heading">🏆 Classifica</h3>
+      <div class="lb-tabs" id="lb-tabs" role="tablist">
+        <button class="lb-tab active" data-mode="all" role="tab" aria-selected="true">All-time</button>
+        <button class="lb-tab" data-mode="classic" role="tab">Classica</button>
+        <button class="lb-tab" data-mode="blitz" role="tab">Blitz</button>
+        <button class="lb-tab" data-mode="blind" role="tab">Blind</button>
+        <button class="lb-tab" data-mode="audio" role="tab">Audio</button>
+        <button class="lb-tab" data-mode="mixed" role="tab">Mista</button>
+        <button class="lb-tab" data-mode="streak" role="tab">Streak</button>
+        <button class="lb-tab" data-mode="duel" role="tab">1v1</button>
+        <button class="lb-tab" data-mode="tournament" role="tab">Torneo</button>
+        <button class="lb-tab" data-mode="daily" role="tab">Daily</button>
+      </div>
+      <ol id="home-leaderboard" class="final-list compact"></ol>
+    </div>
+
+    <button id="btn-profile" class="btn btn-secondary"><span>👤 Il mio profilo</span></button>
+  </section>
+
+  <!-- SCHERMATA PROFILO -->
+  <section id="screen-profile" class="screen">
+    <button class="btn-exit" data-action="back-home" type="button"><span>← Torna al menu</span></button>
+    <h2 class="screen-title">👤 Profilo</h2>
+    <div class="card profile-card">
+      <h3 id="profile-nickname" class="profile-nickname">-</h3>
+      <div class="profile-stats-grid">
+        <div class="stat-box"><span id="stat-games" class="stat-value">0</span><span class="stat-label">Partite</span></div>
+        <div class="stat-box"><span id="stat-accuracy" class="stat-value">0%</span><span class="stat-label">Corrette</span></div>
+        <div class="stat-box"><span id="stat-best-streak" class="stat-value">0</span><span class="stat-label">Streak record</span></div>
+        <div class="stat-box"><span id="stat-high-score" class="stat-value">0</span><span class="stat-label">Punteggio max</span></div>
+      </div>
+      <p class="profile-line">💪 Categoria forte: <strong id="stat-strongest">-</strong></p>
+      <p class="profile-line">📉 Categoria debole: <strong id="stat-weakest">-</strong></p>
+    </div>
+    <div class="card">
+      <h3 class="card-heading">Badge sbloccati</h3>
+      <div id="profile-badges" class="badges-grid"></div>
+    </div>
+  </section>
+
+  <!-- SCHERMATA DAILY CHALLENGE -->
+  <section id="screen-daily" class="screen">
+    <button class="btn-exit" data-action="back-home" type="button"><span>← Esci</span></button>
+    <h2 class="screen-title">📅 Daily Challenge</h2>
+    <span id="daily-progress" class="badge">1 / 10</span>
+    <div id="daily-art" class="question-art hidden"><img id="daily-art-img" alt="" /></div>
+    <h2 id="daily-question-text" class="question-text">Caricamento...</h2>
+    <div id="daily-options-grid" class="options-grid"></div>
+    <p id="daily-feedback" class="answer-feedback"></p>
+  </section>
+
+  <!-- SCHERMATA DAILY FINALE -->
+  <section id="screen-daily-final" class="screen">
+    <h2 class="screen-title">📅 Daily Challenge completata!</h2>
+    <p class="collab-final-label">Il tuo punteggio</p>
+    <p id="daily-final-score" class="collab-final-score">0</p>
+    <div class="card">
+      <h3 class="card-heading">🏆 Classifica di oggi</h3>
+      <ol id="daily-leaderboard" class="final-list compact"></ol>
+    </div>
+    <button id="btn-daily-back" class="btn btn-primary" type="button"><span>Torna al menu</span></button>
+  </section>
+
+  <!-- SCHERMATA LOBBY -->
+  <section id="screen-lobby" class="screen">
+    <button class="btn-exit" data-action="leave" type="button"><span>← Esci</span></button>
+    <h2 class="screen-title">Sala d'attesa</h2>
+    <span id="lobby-mode-badge" class="badge badge-accent mode-badge"></span>
+    <div class="room-code-box">
+      <span class="room-code-label">Codice stanza</span>
+      <span id="lobby-code" class="room-code-value">----</span>
+    </div>
+    <button id="btn-invite-link" class="btn btn-secondary btn-invite" type="button">
+      <span>📎 Copia link invito</span>
+    </button>
+
+    <div class="card players-card">
+      <h3 class="card-heading"><span id="lobby-count">0</span> giocatori</h3>
+      <ul id="lobby-players" class="player-list"></ul>
+    </div>
+
+    <div id="host-settings" class="card hidden">
+      <h3 class="card-heading">Impostazioni partita</h3>
+
+      <label class="field-label">Categoria</label>
+      <select id="setting-category">
+        <option value="mixed">🔀 Modalità mista (tutte le ere)</option>
+        <option value="hiphop90">📻 Hip Hop USA anni 90</option>
+        <option value="hiphop2000">💿 Hip Hop anni 2000</option>
+        <option value="raptrap2010">🔥 Rap/Trap anni 2010</option>
+        <option value="trapmodern">⚡ Trap moderna 2020-2025</option>
+      </select>
+
+      <div id="settings-standard" class="settings-row">
+        <div>
+          <label class="field-label">Round</label>
+          <select id="setting-rounds">
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="15">15</option>
+            <option value="20">20</option>
+          </select>
+        </div>
+        <div id="settings-timelimit-col">
+          <label class="field-label">Tempo/domanda</label>
+          <select id="setting-timelimit">
+            <option value="10">10s</option>
+            <option value="15" selected>15s</option>
+            <option value="20">20s</option>
+            <option value="30">30s</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="settings-collab" class="hidden">
+        <label class="field-label">Durata totale</label>
+        <select id="setting-duration">
+          <option value="60">60 secondi</option>
+          <option value="90" selected>90 secondi</option>
+          <option value="120">120 secondi</option>
+          <option value="180">180 secondi</option>
+        </select>
+      </div>
+
+      <button id="btn-start" class="btn btn-primary">
+        <span>Avvia partita</span>
+      </button>
+    </div>
+
+    <p id="duel-wait-hint" class="hint pulse hidden">⚔️ Sfida 1v1 — in attesa dell'avversario...</p>
+    <p id="waiting-text" class="hint pulse hidden">In attesa che l'host avvii la partita...</p>
+  </section>
+
+  <!-- SCHERMATA TORNEO: interstitial tra un match e l'altro -->
+  <section id="screen-tournament" class="screen">
+    <h2 id="tournament-round-name" class="screen-title">⚔️ Finale</h2>
+    <p id="tournament-match-label" class="hint">Match 1 di 1</p>
+
+    <div id="tournament-matchup" class="tournament-matchup">
+      <div class="tournament-fighter" id="t-fighter-a">
+        <span id="t-name-a" class="tournament-name">-</span>
+        <span class="tournament-rank" id="t-rank-a">-</span>
+      </div>
+      <div class="tournament-vs">⚔️</div>
+      <div class="tournament-fighter" id="t-fighter-b">
+        <span id="t-name-b" class="tournament-name">-</span>
+        <span class="tournament-rank" id="t-rank-b">-</span>
+      </div>
+    </div>
+
+    <div id="tournament-result-banner" class="tournament-result-banner hidden">
+      <p id="tournament-winner-text" class="tournament-winner-text"></p>
+      <p id="tournament-loser-text" class="tournament-loser-text"></p>
+    </div>
+
+    <div id="tournament-history" class="tournament-history hidden">
+      <h3 class="card-heading">Risultati precedenti</h3>
+      <ul id="tournament-history-list" class="result-list"></ul>
+    </div>
+
+    <div id="tournament-countdown-box" class="next-round-box hidden">
+      <div class="next-round-track"><div id="tournament-countdown-fill" class="next-round-fill"></div></div>
+      <p class="hint">Prossimo match tra <span id="tournament-countdown-sec">8</span>s</p>
+    </div>
+
+    <div id="tournament-champion-box" class="tournament-champion-box hidden">
+      <div class="champion-trophy">🏆</div>
+      <h2 id="tournament-champion-name" class="tournament-champion-name">-</h2>
+      <p class="hint">Campione del torneo!</p>
+      <button id="btn-tournament-play-again" class="btn btn-primary hidden" type="button"><span>Nuovo torneo</span></button>
+      <button id="btn-tournament-back" class="btn btn-secondary" type="button"><span>Torna al menu</span></button>
+    </div>
+  </section>
+
+  <!-- SCHERMATA CARICAMENTO -->
+  <section id="screen-loading" class="screen">
+    <div class="vinyl-spinner"><div class="vinyl-spinner-hole"></div></div>
+    <h2 class="screen-title">Stiamo preparando il quiz</h2>
+    <p class="hint">Recupero copertine e brani in corso...</p>
+  </section>
+
+  <!-- SCHERMATA GIOCO -->
+  <section id="screen-game" class="screen">
+    <button class="btn-exit" data-action="leave" type="button"><span>← Esci</span></button>
+
+    <div id="standard-top" class="game-top">
+      <span id="game-progress" class="badge">1 / 10</span>
+      <span id="answer-count" class="badge badge-soft">0/0 risposto</span>
+      <span id="game-type" class="badge badge-accent">Artista</span>
+    </div>
+
+    <div id="collab-top" class="collab-top hidden">
+      <div class="collab-score">
+        <span class="collab-score-label">Punteggio squadra</span>
+        <span id="collab-score-value" class="collab-score-value">0</span>
+      </div>
+      <div class="collab-clock">
+        <div class="collab-clock-track"><div id="collab-clock-fill" class="collab-clock-fill"></div></div>
+        <span id="collab-clock-text" class="collab-clock-text">90s</span>
+      </div>
+    </div>
+
+    <div id="duel-top" class="duel-top hidden">
+      <div class="duel-scorebar">
+        <div class="duel-side" id="duel-side-a">
+          <span id="duel-name-a" class="duel-name">-</span>
+          <span id="duel-score-a" class="duel-score-val">0</span>
+        </div>
+        <div class="duel-vs">VS</div>
+        <div class="duel-side" id="duel-side-b">
+          <span id="duel-score-b" class="duel-score-val">0</span>
+          <span id="duel-name-b" class="duel-name">-</span>
+        </div>
+      </div>
+      <div class="duel-meta-row">
+        <span id="duel-round" class="badge">Round 1/10</span>
+        <span id="duel-spectator-badge" class="badge badge-accent hidden">👁 Spettatore</span>
+      </div>
+    </div>
+
+    <div class="timer-track"><div id="timer-bar" class="timer-fill"></div></div>
+
+    <div id="question-art" class="question-art hidden">
+      <img id="question-art-img" alt="" />
+      <div id="question-art-overlay" class="question-art-overlay">
+        <span class="mystery-icon">?</span>
+      </div>
+    </div>
+
+    <div id="audio-player" class="audio-player hidden">
+      <button id="btn-play-audio" class="play-btn" type="button">▶</button>
+      <div id="waveform" class="waveform">
+        <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+      </div>
+    </div>
+
+    <h2 id="question-text" class="question-text">Caricamento...</h2>
+
+    <div id="options-grid" class="options-grid"></div>
+
+    <p id="answer-feedback" class="answer-feedback"></p>
+  </section>
+
+  <!-- SCHERMATA RISULTATO ROUND -->
+  <section id="screen-round-result" class="screen">
+    <h2 id="round-result-title" class="screen-title">Round terminato!</h2>
+    <p id="round-correct-answer" class="correct-answer-text"></p>
+    <p id="collab-winner-text" class="collab-winner-text hidden"></p>
+    <ul id="round-result-list" class="result-list"></ul>
+    <div class="next-round-box">
+      <div class="next-round-track"><div id="next-round-fill" class="next-round-fill"></div></div>
+      <p class="hint">Prossima domanda tra <span id="next-round-seconds">5</span>s</p>
+    </div>
+  </section>
+
+  <!-- MODAL CARD RISULTATO -->
+  <div id="result-card-modal" class="result-card-modal hidden" role="dialog" aria-modal="true">
+    <div class="result-card-backdrop" id="result-card-backdrop"></div>
+    <div class="result-card-dialog">
+      <canvas id="result-card-canvas" width="900" height="500"></canvas>
+      <div class="result-card-actions">
+        <button id="btn-download-card" class="btn btn-primary" type="button"><span>⬇ Scarica</span></button>
+        <button id="btn-share-card" class="btn btn-secondary" type="button"><span>↗ Condividi</span></button>
+        <button id="btn-close-card" class="btn btn-secondary" type="button"><span>✕ Chiudi</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCHERMATA FINALE -->
+  <section id="screen-final" class="screen">
+    <h2 class="screen-title trophy-title">🏆 Classifica finale</h2>
+    <ol id="final-list" class="final-list"></ol>
+
+    <div id="final-collab" class="card hidden">
+      <p class="collab-final-label">Punteggio di squadra</p>
+      <p id="final-collab-score" class="collab-final-score">0</p>
+      <ul id="final-collab-contrib" class="player-list"></ul>
+    </div>
+
+    <div id="final-leaderboard-block" class="card hidden">
+      <h3 class="card-heading">🏆 Classifica all-time (Top 10)</h3>
+      <ol id="final-leaderboard-list" class="final-list compact"></ol>
+    </div>
+
+    <div class="final-actions">
+      <button id="btn-play-again" class="btn btn-primary hidden">
+        <span>Nuova partita</span>
+      </button>
+      <button id="btn-back-menu" class="btn btn-secondary" type="button">
+        <span>Torna al menu principale</span>
+      </button>
+      <button id="btn-view-leaderboard" class="btn btn-secondary" type="button">
+        <span>Vedi classifica</span>
+      </button>
+      <button id="btn-share-result" class="btn btn-secondary" type="button">
+        <span>Condividi risultato</span>
+      </button>
+    </div>
+    <p id="final-waiting" class="hint pulse hidden">In attesa che l'host avvii una nuova partita...</p>
+  </section>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
