@@ -957,10 +957,7 @@ socket.on("streak:question", (q) => {
 });
 
 socket.on("streak:result", (data) => {
-  [...optionsGrid.children].forEach((btn, i) => {
-    if (i === data.correctIndex) btn.classList.add("correct");
-    else if (btn.classList.contains("selected")) btn.classList.add("incorrect");
-  });
+  revealAnswers(optionsGrid, data.correctIndex);
   hapticFeedback(data.correct ? "correct" : "incorrect");
   questionArt.classList.remove("is-blurred");
   gameProgress.textContent = `🔥 Streak: ${data.streakCount}`;
@@ -981,6 +978,25 @@ function submitAnswer(choiceIndex, btn) {
   socket.emit("answer:submit", { choiceIndex });
 }
 
+/**
+ * Rivela i colori delle risposte su una options-grid.
+ * - Bottone corretto → sempre VERDE (.correct)
+ * - Bottone selezionato sbagliato → ROSSO (.incorrect)
+ * - Nessuna selezione (timeout) → solo il corretto diventa verde, nessun rosso
+ * Rimuove .selected prima di aggiungere il nuovo stato per evitare conflitti CSS.
+ */
+function revealAnswers(grid, correctIndex) {
+  [...grid.children].forEach((btn, i) => {
+    const wasSelected = btn.classList.contains("selected");
+    btn.classList.remove("selected");
+    if (i === correctIndex) {
+      btn.classList.add("correct");
+    } else if (wasSelected) {
+      btn.classList.add("incorrect");
+    }
+  });
+}
+
 // ---------- ROUND RESULT ----------
 const roundResultTitle = document.getElementById("round-result-title");
 const roundCorrectAnswer = document.getElementById("round-correct-answer");
@@ -990,74 +1006,91 @@ const nextRoundFill = document.getElementById("next-round-fill");
 const nextRoundSeconds = document.getElementById("next-round-seconds");
 
 socket.on("game:roundResult", (data) => {
-  showScreen("roundResult");
   clearInterval(timerInterval);
   stopAudioPreview();
   questionArt.classList.remove("is-blurred");
 
-  const correctOptionText = optionsGrid.children[data.correctIndex] ? optionsGrid.children[data.correctIndex].textContent : "";
+  // Cattura il testo della risposta corretta prima di toccare i bottoni
+  const correctOptionText = optionsGrid.children[data.correctIndex]
+    ? optionsGrid.children[data.correctIndex].textContent
+    : "";
 
+  // Rivela i colori MENTRE la schermata di gioco è ancora visibile:
+  // - risposta corretta → VERDE
+  // - selezione sbagliata → ROSSA, risposta corretta → VERDE
+  // - timeout (nessuna selezione) → solo la corretta in VERDE
+  revealAnswers(optionsGrid, data.correctIndex);
+
+  // Haptic immediato
   if (data.mode === "collab") {
-    roundResultTitle.textContent = data.winnerNickname ? "Punto conquistato! 🎯" : "Tempo scaduto per questa domanda";
-    collabWinnerText.classList.remove("hidden");
-    collabWinnerText.textContent = data.winnerNickname
-      ? `${data.winnerNickname} ha indovinato! +100 punti squadra`
-      : "Nessuno ha indovinato in tempo.";
-    roundResultList.innerHTML = "";
-    collabScoreValue.textContent = data.teamScore;
     hapticFeedback(data.winnerNickname === myNickname ? "correct" : data.winnerNickname ? "select" : "incorrect");
   } else {
-    collabWinnerText.classList.add("hidden");
-    const myResult = data.players.find((p) => p.id === myId);
-    const isDuelLike = data.mode === "duel" || data.mode === "tournament";
+    const myResultImmediate = data.players && data.players.find((p) => p.id === myId);
+    hapticFeedback(myResultImmediate && myResultImmediate.correct ? "correct" : "incorrect");
+  }
 
-    if (isDuelLike && data.duelPlayers) {
-      updateDuelScoreboard(data.duelPlayers);
-    }
+  // Delay adattivo: la schermata di gioco resta visibile abbastanza a lungo
+  // da permettere all'utente di vedere i colori, poi transiziona ai risultati.
+  // Usiamo una frazione del nextInMs per non mangiarci tutto il tempo risultati.
+  const nextInMs = data.nextInMs || 5000;
+  const REVEAL_DELAY = nextInMs >= 2000 ? 700 : nextInMs >= 1000 ? 400 : 250;
 
-    if (isDuelLike && myResult) {
-      hapticFeedback(myResult.correct ? "correct" : "incorrect");
-      roundResultTitle.textContent = myResult.correct ? "✅ Punto tuo!" : "❌ Punto perso";
+  setTimeout(() => {
+    showScreen("roundResult");
+
+    if (data.mode === "collab") {
+      roundResultTitle.textContent = data.winnerNickname ? "Punto conquistato! 🎯" : "Tempo scaduto per questa domanda";
+      collabWinnerText.classList.remove("hidden");
+      collabWinnerText.textContent = data.winnerNickname
+        ? `${data.winnerNickname} ha indovinato! +100 punti squadra`
+        : "Nessuno ha indovinato in tempo.";
+      roundResultList.innerHTML = "";
+      collabScoreValue.textContent = data.teamScore;
     } else {
-      hapticFeedback(myResult && myResult.correct ? "correct" : "incorrect");
-      roundResultTitle.textContent = data.mode === "tournament" ? "Round terminato!" : "Round terminato!";
+      collabWinnerText.classList.add("hidden");
+      const myResult = data.players.find((p) => p.id === myId);
+      const isDuelLike = data.mode === "duel" || data.mode === "tournament";
+
+      if (isDuelLike && data.duelPlayers) {
+        updateDuelScoreboard(data.duelPlayers);
+      }
+
+      if (isDuelLike && myResult) {
+        roundResultTitle.textContent = myResult.correct ? "✅ Punto tuo!" : "❌ Punto perso";
+      } else {
+        roundResultTitle.textContent = "Round terminato!";
+      }
+
+      const sorted = data.players.slice().sort((a, b) => b.score - a.score);
+      roundResultList.innerHTML = "";
+      sorted.forEach((p, i) => {
+        const li = document.createElement("li");
+        li.className = p.correct ? "correct" : "incorrect";
+        li.style.setProperty("--i", i);
+        li.innerHTML = `<span>${p.correct ? "✅" : "❌"} ${escapeHtml(p.nickname)}</span><span class="points-pill">${p.correct ? "+" + p.delta : "0"} pt · ${p.score} tot</span>`;
+        roundResultList.appendChild(li);
+      });
     }
 
-    const sorted = data.players.slice().sort((a, b) => b.score - a.score);
-    roundResultList.innerHTML = "";
-    sorted.forEach((p, i) => {
-      const li = document.createElement("li");
-      li.className = p.correct ? "correct" : "incorrect";
-      li.style.setProperty("--i", i);
-      li.innerHTML = `<span>${p.correct ? "✅" : "❌"} ${escapeHtml(p.nickname)}</span><span class="points-pill">${p.correct ? "+" + p.delta : "0"} pt · ${p.score} tot</span>`;
-      roundResultList.appendChild(li);
+    roundCorrectAnswer.textContent = correctOptionText ? `✔ Risposta corretta: ${correctOptionText}` : "";
+
+    const totalMs = Math.max(500, nextInMs - REVEAL_DELAY);
+    nextRoundFill.style.transition = "none";
+    nextRoundFill.style.width = "100%";
+    nextRoundSeconds.textContent = Math.ceil(totalMs / 1000);
+    requestAnimationFrame(() => {
+      nextRoundFill.style.transition = `width ${totalMs}ms linear`;
+      nextRoundFill.style.width = "0%";
     });
-  }
 
-  roundCorrectAnswer.textContent = correctOptionText ? `✔ Risposta corretta: ${correctOptionText}` : "";
-  if (optionsGrid.children.length) {
-    [...optionsGrid.children].forEach((btn, i) => {
-      if (i === data.correctIndex) btn.classList.add("correct");
-      else if (btn.classList.contains("selected")) btn.classList.add("incorrect");
-    });
-  }
-
-  const totalMs = data.nextInMs || 5000;
-  nextRoundFill.style.transition = "none";
-  nextRoundFill.style.width = "100%";
-  nextRoundSeconds.textContent = Math.ceil(totalMs / 1000);
-  requestAnimationFrame(() => {
-    nextRoundFill.style.transition = `width ${totalMs}ms linear`;
-    nextRoundFill.style.width = "0%";
-  });
-
-  clearInterval(countdownInterval);
-  const startTs = Date.now();
-  countdownInterval = setInterval(() => {
-    const remaining = Math.max(0, totalMs - (Date.now() - startTs));
-    nextRoundSeconds.textContent = Math.ceil(remaining / 1000);
-    if (remaining <= 0) clearInterval(countdownInterval);
-  }, 200);
+    clearInterval(countdownInterval);
+    const startTs = Date.now();
+    countdownInterval = setInterval(() => {
+      const remaining = Math.max(0, totalMs - (Date.now() - startTs));
+      nextRoundSeconds.textContent = Math.ceil(remaining / 1000);
+      if (remaining <= 0) clearInterval(countdownInterval);
+    }, 200);
+  }, REVEAL_DELAY);
 });
 
 // ---------- FINAL ----------
@@ -1689,10 +1722,7 @@ function submitDailyAnswer(choiceIndex, btn) {
   socket.emit("daily:answer", { choiceIndex }, (res) => {
     if (!res.ok) return;
     dailyArt.classList.remove("is-blurred");
-    [...dailyOptionsGrid.children].forEach((b, i) => {
-      if (i === res.correctIndex) b.classList.add("correct");
-      else if (b.classList.contains("selected")) b.classList.add("incorrect");
-    });
+    revealAnswers(dailyOptionsGrid, res.correctIndex);
     hapticFeedback(res.correct ? "correct" : "incorrect");
     if (res.done) {
       setTimeout(() => finishDaily(res), 1200);
