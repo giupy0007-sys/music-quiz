@@ -11,6 +11,11 @@ const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, "public")));
 
+// iOS Safari proba questi path a root come fallback anche quando l'HTML ha link tag espliciti
+const ICON_180 = path.join(__dirname, "public", "icons", "apple-touch-icon-180.png");
+app.get("/apple-touch-icon.png", (_, res) => res.sendFile(ICON_180));
+app.get("/apple-touch-icon-precomposed.png", (_, res) => res.sendFile(ICON_180));
+
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // niente 0/O/1/I per evitare ambiguità
 const ARTWORK_TIMEOUT_MS = 4000;
 const ALL_MODES = ["classic", "blitz", "blind", "collab", "audio", "mixed", "streak", "duel", "tournament", "daily"];
