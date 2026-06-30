@@ -42,6 +42,45 @@
 <div id="flying-emoji-container" class="flying-emoji-container"></div>
 <div class="bg-glow"></div>
 
+<!-- Feedback FAB + modal -->
+<button id="feedback-fab" class="feedback-fab" type="button" title="Invia feedback" aria-label="Apri feedback">💬</button>
+
+<div id="feedback-modal" class="feedback-modal hidden" role="dialog" aria-modal="true" aria-labelledby="feedback-modal-title">
+  <div id="feedback-backdrop" class="feedback-backdrop"></div>
+  <div class="feedback-dialog">
+    <button class="feedback-close" id="feedback-close" aria-label="Chiudi">✕</button>
+    <h2 id="feedback-modal-title" class="feedback-title">Lascia un commento</h2>
+    <div class="feedback-tabs" role="tablist">
+      <button class="feedback-tab active" data-tab="text" role="tab" aria-selected="true">💬 Feedback</button>
+      <button class="feedback-tab" data-tab="bug" role="tab" aria-selected="false">🐛 Segnala problema</button>
+    </div>
+    <!-- Tab: testo libero -->
+    <div class="feedback-body" id="feedback-body-text" role="tabpanel">
+      <p class="feedback-desc">Suggerimenti, idee, o cosa ne pensi dell'app?</p>
+      <textarea id="feedback-text-input" class="feedback-textarea" placeholder="Scrivi qui…" rows="4" maxlength="500"></textarea>
+      <div class="feedback-counter"><span id="feedback-text-count">0</span>/500</div>
+      <button id="feedback-submit-text" class="btn btn-primary feedback-send">Invia</button>
+    </div>
+    <!-- Tab: bug report -->
+    <div class="feedback-body hidden" id="feedback-body-bug" role="tabpanel">
+      <p class="feedback-desc">Descrivi il problema. Il contesto viene allegato automaticamente.</p>
+      <textarea id="feedback-bug-input" class="feedback-textarea" placeholder="Cosa è successo?" rows="3" maxlength="500"></textarea>
+      <div class="feedback-counter"><span id="feedback-bug-count">0</span>/500</div>
+      <div class="feedback-ctx">
+        <span>📱 <span id="fb-ctx-screen">—</span></span>
+        <span>👤 <span id="fb-ctx-nick">—</span></span>
+        <span>🎮 <span id="fb-ctx-mode">—</span></span>
+      </div>
+      <button id="feedback-submit-bug" class="btn btn-primary feedback-send">Segnala</button>
+    </div>
+    <!-- Conferma -->
+    <div class="feedback-success hidden" id="feedback-success">
+      <span class="feedback-check">✓</span>
+      <p>Grazie per il feedback!</p>
+    </div>
+  </div>
+</div>
+
 <button id="btn-reaction-toggle" class="reaction-fab hidden" type="button">😄</button>
 <div id="reaction-panel" class="reaction-panel hidden">
   <button class="reaction-emoji-btn" data-emoji="🔥" type="button">🔥</button>
@@ -379,6 +418,19 @@
     <div id="final-leaderboard-block" class="card hidden">
       <h3 class="card-heading">🏆 Classifica all-time (Top 10)</h3>
       <ol id="final-leaderboard-list" class="final-list compact"></ol>
+    </div>
+
+    <!-- Rating widget post-partita (non invasivo, saltabile) -->
+    <div id="rating-widget" class="rating-widget hidden" aria-label="Valuta la partita">
+      <p class="rating-prompt">Com'è andata?</p>
+      <div class="rating-stars" id="rating-stars">
+        <button class="star-btn" data-stars="1" aria-label="1 stella">★</button>
+        <button class="star-btn" data-stars="2" aria-label="2 stelle">★</button>
+        <button class="star-btn" data-stars="3" aria-label="3 stelle">★</button>
+        <button class="star-btn" data-stars="4" aria-label="4 stelle">★</button>
+        <button class="star-btn" data-stars="5" aria-label="5 stelle">★</button>
+      </div>
+      <button class="rating-skip" id="rating-skip" type="button">Salta</button>
     </div>
 
     <div class="final-actions">

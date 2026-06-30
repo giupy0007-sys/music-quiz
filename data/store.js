@@ -140,6 +140,18 @@ function hasPlayedToday(nickname) {
   return board.some((e) => normalizeNickname(e.nickname) === key);
 }
 
+// ---------- Feedback ----------
+let feedbackData = loadJson("feedback.json", []);
+
+function addFeedback(entry) {
+  feedbackData.push(entry);
+  saveJson("feedback.json", feedbackData);
+}
+
+function getAllFeedback() {
+  return feedbackData;
+}
+
 module.exports = {
   getProfile,
   saveProfiles,
@@ -151,4 +163,6 @@ module.exports = {
   submitDailyScore,
   hasPlayedToday,
   todayKey,
+  addFeedback,
+  getAllFeedback,
 };

@@ -6,6 +6,7 @@ data/profiles.json
 data/leaderboard.json
 data/leaderboard_modes.json
 data/daily.json
+data/feedback.json
 
 # File di log
 *.log

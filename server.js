@@ -10,6 +10,7 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, "public")));
+app.use(express.json({ limit: "16kb" }));
 
 // iOS Safari proba questi path a root come fallback anche quando l'HTML ha link tag espliciti
 const ICON_180 = path.join(__dirname, "public", "icons", "apple-touch-icon-180.png");
@@ -1448,6 +1449,138 @@ function cleanNickname(raw) {
   const trimmed = (raw || "").toString().trim().slice(0, 16);
   return trimmed || "Giocatore";
 }
+
+// ─── Feedback API ─────────────────────────────────────────────────────────────
+
+const VALID_FEEDBACK_TYPES = new Set(["text", "bug", "rating"]);
+
+app.post("/api/feedback", (req, res) => {
+  const { type, content } = req.body || {};
+  if (!VALID_FEEDBACK_TYPES.has(type)) return res.status(400).json({ error: "tipo non valido" });
+  const entry = {
+    id: Math.random().toString(36).slice(2, 10),
+    timestamp: new Date().toISOString(),
+    type,
+    content: content || {},
+  };
+  store.addFeedback(entry);
+  res.json({ ok: true });
+});
+
+// ─── Admin panel (URL segreto) ────────────────────────────────────────────────
+
+app.get("/admin-panel-r8f2m5k7", (req, res) => {
+  const all = store.getAllFeedback().slice().reverse(); // più recente prima
+
+  const ratings = all.filter((e) => e.type === "rating");
+  const avgStars = ratings.length
+    ? (ratings.reduce((s, e) => s + (e.content.stars || 0), 0) / ratings.length).toFixed(2)
+    : "—";
+
+  const byMode = {};
+  for (const e of ratings) {
+    const m = e.content.mode || "—";
+    if (!byMode[m]) byMode[m] = { sum: 0, n: 0 };
+    byMode[m].sum += e.content.stars || 0;
+    byMode[m].n++;
+  }
+
+  const typeLabel = { text: "💬 Feedback", bug: "🐛 Bug", rating: "⭐ Valutazione" };
+  const typeBadge = { text: "#3a86ff", bug: "#ff006e", rating: "#ffbe0b" };
+
+  const rows = all.map((e) => {
+    const d = new Date(e.timestamp).toLocaleString("it-IT");
+    const badge = `<span style="background:${typeBadge[e.type]||"#555"};color:#000;padding:2px 8px;border-radius:20px;font-size:12px;font-weight:700;">${typeLabel[e.type]||e.type}</span>`;
+    let detail = "";
+    if (e.type === "text") {
+      detail = `<p>${escHtml(e.content.message || "")}</p>`;
+    } else if (e.type === "bug") {
+      detail = `<p>${escHtml(e.content.message || "")}</p>
+        <small>Schermata: <b>${escHtml(e.content.screen || "—")}</b> &nbsp;|&nbsp; Nickname: <b>${escHtml(e.content.nickname || "—")}</b> &nbsp;|&nbsp; Modalità: <b>${escHtml(e.content.mode || "—")}</b></small>`;
+    } else if (e.type === "rating") {
+      const stars = "★".repeat(e.content.stars || 0) + "☆".repeat(5 - (e.content.stars || 0));
+      detail = `<p style="font-size:20px;letter-spacing:2px;">${stars}</p>
+        <small>Modalità: <b>${escHtml(e.content.mode || "—")}</b> &nbsp;|&nbsp; Score: <b>${e.content.score ?? "—"}</b> &nbsp;|&nbsp; Categoria: <b>${escHtml(e.content.category || "—")}</b></small>`;
+    }
+    return `<div class="card" data-type="${e.type}">
+      <div class="card-meta">${badge} <span class="ts">${d}</span></div>
+      ${detail}
+    </div>`;
+  }).join("");
+
+  const modeRows = Object.entries(byMode)
+    .sort((a, b) => b[1].sum / b[1].n - a[1].sum / a[1].n)
+    .map(([m, v]) => `<tr><td>${escHtml(m)}</td><td>${(v.sum / v.n).toFixed(2)} ★</td><td>${v.n}</td></tr>`)
+    .join("");
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  res.send(`<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin — Music Quiz Feedback</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0612;color:#e0d6ff;font-family:system-ui,sans-serif;padding:24px;min-height:100vh}
+h1{font-size:24px;margin-bottom:4px;color:#ff3d81}
+.sub{color:#7c6fa0;font-size:14px;margin-bottom:24px}
+.stats{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:28px}
+.stat-box{background:#1a1030;border:1px solid #2d1f5e;border-radius:12px;padding:16px 24px;text-align:center}
+.stat-box .num{font-size:32px;font-weight:800;color:#ff3d81}
+.stat-box .lbl{font-size:12px;color:#7c6fa0;margin-top:4px}
+.filters{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.filter-btn{background:#1a1030;border:1px solid #2d1f5e;border-radius:20px;padding:6px 16px;color:#e0d6ff;cursor:pointer;font-size:13px;transition:background .15s}
+.filter-btn.active,.filter-btn:hover{background:#2d1f5e}
+.card{background:#1a1030;border:1px solid #2d1f5e;border-radius:12px;padding:16px;margin-bottom:12px;transition:opacity .2s}
+.card.hidden{display:none}
+.card-meta{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.ts{color:#7c6fa0;font-size:12px}
+.card p{line-height:1.5;color:#e0d6ff;white-space:pre-wrap;word-break:break-word}
+.card small{color:#7c6fa0;font-size:12px;display:block;margin-top:6px}
+.card b{color:#c4b5fd}
+table{width:100%;border-collapse:collapse;margin-top:8px}
+th,td{padding:8px 12px;text-align:left;border-bottom:1px solid #2d1f5e;font-size:14px}
+th{color:#7c6fa0;font-size:12px;font-weight:600;text-transform:uppercase}
+.section-title{font-size:14px;color:#7c6fa0;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:24px 0 12px}
+.empty{color:#7c6fa0;padding:40px;text-align:center}
+</style>
+</head><body>
+<h1>Music Quiz — Feedback</h1>
+<p class="sub">Pannello admin riservato &middot; ${all.length} entrate totali</p>
+
+<div class="stats">
+  <div class="stat-box"><div class="num">${all.filter(e=>e.type==="text").length}</div><div class="lbl">💬 Feedback testo</div></div>
+  <div class="stat-box"><div class="num">${all.filter(e=>e.type==="bug").length}</div><div class="lbl">🐛 Bug report</div></div>
+  <div class="stat-box"><div class="num">${ratings.length}</div><div class="lbl">⭐ Valutazioni</div></div>
+  <div class="stat-box"><div class="num">${avgStars}</div><div class="lbl">★ Media stelle</div></div>
+</div>
+
+${modeRows ? `<p class="section-title">Media per modalità</p>
+<table><thead><tr><th>Modalità</th><th>Media</th><th>Valutazioni</th></tr></thead><tbody>${modeRows}</tbody></table>` : ""}
+
+<p class="section-title">Tutti i feedback</p>
+<div class="filters">
+  <button class="filter-btn active" onclick="filterCards('all',this)">Tutti</button>
+  <button class="filter-btn" onclick="filterCards('text',this)">💬 Testo</button>
+  <button class="filter-btn" onclick="filterCards('bug',this)">🐛 Bug</button>
+  <button class="filter-btn" onclick="filterCards('rating',this)">⭐ Valutazioni</button>
+</div>
+<div id="cards">${rows || '<p class="empty">Nessun feedback ancora.</p>'}</div>
+
+<script>
+function filterCards(type,btn){
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('#cards .card').forEach(c=>{
+    c.classList.toggle('hidden', type!=='all' && c.dataset.type!==type);
+  });
+}
+</script>
+</body></html>`);
+});
+
+// ─── Avvio server ─────────────────────────────────────────────────────────────
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {

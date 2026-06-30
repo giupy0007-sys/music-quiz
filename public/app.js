@@ -64,7 +64,10 @@ const screens = {
 const ROOM_SCREENS = new Set(["lobby", "loading", "game", "roundResult", "final", "tournament"]);
 const appEl = document.getElementById("app");
 
+let currentScreen = "home";
+
 function showScreen(name) {
+  currentScreen = name;
   for (const key of Object.keys(screens)) {
     screens[key].classList.toggle("active", key === name);
   }
@@ -1131,6 +1134,7 @@ socket.on("game:final", (data) => {
     }
   }
   updateFinalControls();
+  showRatingWidget();
 });
 
 function updateFinalControls() {
@@ -1721,3 +1725,164 @@ function escapeHtml(str) {
   div.textContent = str;
   return div.innerHTML;
 }
+
+// ─── FEEDBACK SYSTEM ──────────────────────────────────────────────────────────
+
+async function sendFeedback(type, content) {
+  try {
+    await fetch("/api/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, content }),
+    });
+  } catch {
+    // fallisce silenziosamente — il feedback non è critico
+  }
+}
+
+// --- Feedback FAB & Modal ---
+
+const feedbackFab     = document.getElementById("feedback-fab");
+const feedbackModal   = document.getElementById("feedback-modal");
+const feedbackBackdrop = document.getElementById("feedback-backdrop");
+const feedbackClose   = document.getElementById("feedback-close");
+const feedbackSuccess = document.getElementById("feedback-success");
+const bodyText = document.getElementById("feedback-body-text");
+const bodyBug  = document.getElementById("feedback-body-bug");
+
+let activeFeedbackTab = "text";
+
+function openFeedbackModal() {
+  feedbackModal.classList.remove("hidden");
+  // aggiorna contesto bug in tempo reale
+  const nick = getSavedNickname();
+  document.getElementById("fb-ctx-screen").textContent = currentScreen;
+  document.getElementById("fb-ctx-nick").textContent = nick || "—";
+  document.getElementById("fb-ctx-mode").textContent = lastResultCardData?.mode || "—";
+  // reset stato
+  feedbackSuccess.classList.add("hidden");
+  bodyText.classList.remove("hidden");
+  bodyBug.classList.remove("hidden");
+  switchFeedbackTab(activeFeedbackTab);
+}
+
+function closeFeedbackModal() {
+  feedbackModal.classList.add("hidden");
+}
+
+function switchFeedbackTab(tab) {
+  activeFeedbackTab = tab;
+  document.querySelectorAll(".feedback-tab").forEach((btn) => {
+    const isActive = btn.dataset.tab === tab;
+    btn.classList.toggle("active", isActive);
+    btn.setAttribute("aria-selected", String(isActive));
+  });
+  bodyText.classList.toggle("hidden", tab !== "text");
+  bodyBug.classList.toggle("hidden",  tab !== "bug");
+  feedbackSuccess.classList.add("hidden");
+}
+
+function showFeedbackSuccess() {
+  bodyText.classList.add("hidden");
+  bodyBug.classList.add("hidden");
+  feedbackSuccess.classList.remove("hidden");
+  setTimeout(closeFeedbackModal, 2200);
+}
+
+feedbackFab.addEventListener("click", openFeedbackModal);
+feedbackClose.addEventListener("click", closeFeedbackModal);
+feedbackBackdrop.addEventListener("click", closeFeedbackModal);
+
+document.querySelectorAll(".feedback-tab").forEach((btn) => {
+  btn.addEventListener("click", () => switchFeedbackTab(btn.dataset.tab));
+});
+
+// Contatori caratteri
+function wireCounter(textareaId, countId) {
+  const ta = document.getElementById(textareaId);
+  const ct = document.getElementById(countId);
+  ta.addEventListener("input", () => { ct.textContent = ta.value.length; });
+}
+wireCounter("feedback-text-input", "feedback-text-count");
+wireCounter("feedback-bug-input",  "feedback-bug-count");
+
+// Submit: testo libero
+document.getElementById("feedback-submit-text").addEventListener("click", async () => {
+  const msg = document.getElementById("feedback-text-input").value.trim();
+  if (!msg) return;
+  await sendFeedback("text", { message: msg });
+  document.getElementById("feedback-text-input").value = "";
+  document.getElementById("feedback-text-count").textContent = "0";
+  showFeedbackSuccess();
+});
+
+// Submit: bug report
+document.getElementById("feedback-submit-bug").addEventListener("click", async () => {
+  const msg = document.getElementById("feedback-bug-input").value.trim();
+  if (!msg) return;
+  await sendFeedback("bug", {
+    message: msg,
+    screen:   currentScreen,
+    nickname: getSavedNickname() || "—",
+    mode:     lastResultCardData?.mode || "—",
+    timestamp: new Date().toISOString(),
+  });
+  document.getElementById("feedback-bug-input").value = "";
+  document.getElementById("feedback-bug-count").textContent = "0";
+  showFeedbackSuccess();
+});
+
+// --- Rating widget post-partita ---
+
+const ratingWidget = document.getElementById("rating-widget");
+const ratingStarsEl = document.getElementById("rating-stars");
+let ratingShownForGame = false;
+
+function showRatingWidget() {
+  ratingShownForGame = false;
+  ratingWidget.classList.add("hidden");
+  // Reset stelle
+  document.querySelectorAll(".star-btn").forEach((b) => b.classList.remove("lit"));
+  // Mostra dopo 1.5s con leggero delay per non sovrapporsi ai toast
+  setTimeout(() => {
+    ratingWidget.classList.remove("hidden");
+  }, 1500);
+}
+
+// Hover: illumina stelle fino al target
+ratingStarsEl.addEventListener("mouseover", (e) => {
+  const btn = e.target.closest(".star-btn");
+  if (!btn) return;
+  const n = Number(btn.dataset.stars);
+  document.querySelectorAll(".star-btn").forEach((b) => {
+    b.classList.toggle("lit", Number(b.dataset.stars) <= n);
+  });
+});
+ratingStarsEl.addEventListener("mouseleave", () => {
+  if (!ratingShownForGame) {
+    document.querySelectorAll(".star-btn").forEach((b) => b.classList.remove("lit"));
+  }
+});
+
+// Click: invia valutazione
+ratingStarsEl.addEventListener("click", async (e) => {
+  const btn = e.target.closest(".star-btn");
+  if (!btn || ratingShownForGame) return;
+  ratingShownForGame = true;
+  const stars = Number(btn.dataset.stars);
+  // Mantieni stelle illuminate
+  document.querySelectorAll(".star-btn").forEach((b) => {
+    b.classList.toggle("lit", Number(b.dataset.stars) <= stars);
+  });
+  await sendFeedback("rating", {
+    stars,
+    mode:     lastResultCardData?.mode     || "—",
+    category: lastResultCardData?.category || "—",
+    score:    lastResultCardData?.score    ?? null,
+  });
+  setTimeout(() => ratingWidget.classList.add("hidden"), 900);
+});
+
+document.getElementById("rating-skip").addEventListener("click", () => {
+  ratingWidget.classList.add("hidden");
+});
