@@ -22,3 +22,6 @@ Thumbs.db
 
 # Cartelle temporanee
 tmp/
+
+# Icona sorgente ad alta risoluzione (1254×1254 — troppo pesante per git)
+public/icons/icon-source.png
