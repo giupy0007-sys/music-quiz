@@ -5,12 +5,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <meta name="theme-color" content="#0a0612" />
 <title>Music Quiz</title>
+
+<!-- PWA: installabile sulla home screen iPhone/Android -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Music Quiz" />
+<meta name="mobile-web-app-capable" content="yes" />
+
+<!-- Icone per home screen (iOS) -->
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+<link rel="apple-touch-icon" sizes="120x120" href="/icons/apple-touch-icon-120.png" />
+<link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon-152.png" />
+<link rel="apple-touch-icon" sizes="167x167" href="/icons/apple-touch-icon-167.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png" />
+
+<!-- Web App Manifest (Android/Chrome + standard moderno) -->
+<link rel="manifest" href="/manifest.json" />
+
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+<!-- Splash screen PWA: visibile al lancio dalla home screen, poi scompare -->
+<div id="splash-screen" class="splash-screen" aria-hidden="true">
+  <div class="splash-icon">
+    <img src="/icons/apple-touch-icon-180.png" alt="" width="96" height="96" />
+  </div>
+  <p class="splash-title">Music Quiz</p>
+  <p class="splash-sub">Hip Hop &amp; Trap</p>
+</div>
+
 <div id="toast-container" class="toast-container"></div>
 <div id="confetti-container" class="confetti-container"></div>
 <div id="flying-emoji-container" class="flying-emoji-container"></div>

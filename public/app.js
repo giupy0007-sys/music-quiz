@@ -1,3 +1,19 @@
+// Splash screen: mostra brevemente al lancio dalla home screen, poi scompare
+(function dismissSplash() {
+  const splash = document.getElementById("splash-screen");
+  if (!splash) return;
+  const hide = () => {
+    splash.classList.add("hidden");
+    splash.addEventListener("transitionend", () => splash.remove(), { once: true });
+  };
+  // Aspetta che la pagina sia pronta (min 600ms per dare visibilità alla splash)
+  if (document.readyState === "complete") {
+    setTimeout(hide, 600);
+  } else {
+    window.addEventListener("load", () => setTimeout(hide, 600), { once: true });
+  }
+})();
+
 const socket = io();
 
 const TYPE_LABELS = {
